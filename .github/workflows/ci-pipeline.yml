@@ -1,0 +1,29 @@
+name: Integracion Continua - Plataforma Academica
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  analisis-y-construccion:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 1. Extraer el código fuente del repositorio
+      uses: actions/checkout@v4
+
+    - name: 2. Aprovisionar el marco de trabajo .NET 8
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: 3. Restituir librerías y dependencias (NuGet)
+      run: dotnet restore
+
+    - name: 4. Ensamblar los binarios del aplicativo
+      run: dotnet build --no-restore --configuration Release
+
+    - name: 5. Evaluar la integridad mediante pruebas
+      run: dotnet test --no-build --verbosity normal --configuration Release
