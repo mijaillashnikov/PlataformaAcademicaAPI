@@ -1,6 +1,8 @@
 using AcademicPlatformApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using OpenTelemetry.Metrics;
+using Prometheus;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,7 +41,20 @@ builder.Services.AddSwaggerGen(c =>
         };
     });
 });
-
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(metrics =>
+    {
+        metrics.AddAspNetCoreInstrumentation()
+               // Filtro ampliado: Descartamos las métricas que corrompen el búfer de texto
+               .AddView(instrument =>
+               {
+                   if (instrument.Name.Contains("kestrel") || instrument.Name.Contains("active_requests"))
+                   {
+                       return MetricStreamConfiguration.Drop;
+                   }
+                   return null;
+               });
+    });
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -58,7 +73,12 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+// Intercepta todas las peticiones HTTP automáticamente
+app.UseHttpMetrics();
 app.UseAuthorization();
 app.MapControllers();
+// Exposición del mapa telemétrico en la ruta /metrics
+app.MapMetrics();
 
 app.Run();
+
